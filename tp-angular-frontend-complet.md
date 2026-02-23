@@ -2,7 +2,7 @@
 
 **Module** : Architecture Microservices - Frontend  
 **Sujet** : Application Angular connectée aux microservices  
-**Durée** : 4 heures  
+**Durée** : 3 heures  
 **Niveau** : Master 2  
 **Prérequis** : TypeScript, HTML/CSS, Angular basics
 
