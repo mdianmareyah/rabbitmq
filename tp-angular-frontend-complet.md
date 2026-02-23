@@ -18,7 +18,6 @@
 6. [Partie 4 : Composants et routing](#6-partie-4-composants)
 7. [Partie 5 : Styling avec Bootstrap](#7-partie-5-styling)
 8. [Partie 6 : Gestion des erreurs](#8-partie-6-erreurs)
-9. [Bonus : Dashboard et statistiques](#9-bonus-dashboard)
 
 ---
 
@@ -31,13 +30,13 @@
 │                   Angular Frontend                       │
 │                   (Port 4200)                           │
 │                                                         │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
-│  │   Client     │  │   Account    │  │   Dashboard  │ │
-│  │  Component   │  │  Component   │  │  Component   │ │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘ │
-│         │                  │                  │         │
-│  ┌──────▼──────────────────▼──────────────────▼──────┐ │
-│  │              Services Layer                        │ │
+│  ┌──────────────┐        ┌──────────────┐                     │
+│  │   Client     │        │   Account    │                     │
+│  │  Component   │        │  Component   │               │
+│  └──────┬───────┘        └──────┬───────┘               │
+│         │                       │                       │
+│  ┌──────▼─────────────────────  ▼────────────────────┐  │
+│  │              Services Layer                       │ │
 │  │  (ClientService, AccountService, HttpClient)      │ │
 │  └──────────────────────┬────────────────────────────┘ │
 └─────────────────────────┼──────────────────────────────┘
@@ -50,35 +49,30 @@
                 └────────┬────────┘
                          │
         ┌────────────────┼────────────────┐
-        │                │                │
-        ▼                ▼                ▼
-┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-│   Client     │  │   Account    │  │    Order     │
-│   Service    │  │   Service    │  │   Service    │
-│   (8082)     │  │   (8081)     │  │   (8085)     │
-└──────────────┘  └──────────────┘  └──────────────┘
+        │                                 │
+        ▼                                 ▼
+┌──────────────┐                    ┌──────────────┐
+│   Client     │                    │    Compte    │
+│   Service    │                    │   Service    │
+│   (8082)     │                    │   (8081)     │
+└──────────────┘                    └──────────────┘
 ```
 
 ## 1.2 Fonctionnalités à développer
 
 ### Module Clients
-- ✅ Liste des clients
-- ✅ Création d'un client
-- ✅ Modification d'un client
-- ✅ Suppression d'un client
-- ✅ Recherche de clients
+-  Liste des clients
+-  Création d'un client
+-  Modification d'un client
+-  Suppression d'un client
+-  Recherche de clients
 
 ### Module Comptes
-- ✅ Liste des comptes
-- ✅ Création d'un compte
-- ✅ Dépôt sur un compte
-- ✅ Retrait sur un compte
-- ✅ Consultation du solde
-
-### Dashboard
-- ✅ Statistiques
-- ✅ Graphiques
-- ✅ Vue d'ensemble
+-  Liste des comptes
+-  Création d'un compte
+-  Dépôt sur un compte
+-  Retrait sur un compte
+-  Consultation du solde
 
 ---
 
@@ -229,29 +223,6 @@ export const environment = {
 };
 ```
 
-## 3.6 Configurer CORS dans le Gateway
-
-Dans `gateway-service/src/main/resources/application.yml` :
-
-```yaml
-spring:
-  cloud:
-    gateway:
-      globalcors:
-        cors-configurations:
-          '[/**]':
-            allowedOrigins: 
-              - "http://localhost:4200"
-            allowedMethods:
-              - GET
-              - POST
-              - PUT
-              - DELETE
-              - OPTIONS
-            allowedHeaders: "*"
-            allowCredentials: true
-            maxAge: 3600
-```
 
 ---
 
@@ -1572,292 +1543,20 @@ Modifier `src/app/app.component.html` :
 </footer>
 ```
 
-## 6.2 Créer le composant Dashboard
 
-```bash
-ng generate component components/dashboard
-```
-
-Modifier `src/app/components/dashboard/dashboard.component.ts` :
-
-```typescript
-import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
-import { ClientService } from '../../services/client.service';
-import { CompteService } from '../../services/compte.service';
-import { Client } from '../../models/client.model';
-import { Compte } from '../../models/compte.model';
-
-@Component({
-  selector: 'app-dashboard',
-  standalone: true,
-  imports: [CommonModule, RouterModule],
-  templateUrl: './dashboard.component.html',
-  styleUrls: ['./dashboard.component.css']
-})
-export class DashboardComponent implements OnInit {
-  totalClients: number = 0;
-  totalComptes: number = 0;
-  soldeTotal: number = 0;
-  loading: boolean = true;
-  
-  recentClients: Client[] = [];
-  recentComptes: Compte[] = [];
-
-  constructor(
-    private clientService: ClientService,
-    private compteService: CompteService
-  ) { }
-
-  ngOnInit(): void {
-    this.loadDashboardData();
-  }
-
-  /**
-   * Charger les données du dashboard
-   */
-  loadDashboardData(): void {
-    this.loading = true;
-
-    // Charger les clients
-    this.clientService.getAllClients().subscribe({
-      next: (clients) => {
-        this.totalClients = clients.length;
-        this.recentClients = clients.slice(-5).reverse(); // 5 derniers clients
-      }
-    });
-
-    // Charger les comptes
-    this.compteService.getAllComptes().subscribe({
-      next: (comptes) => {
-        this.totalComptes = comptes.length;
-        this.soldeTotal = comptes.reduce((sum, compte) => sum + compte.solde, 0);
-        this.recentComptes = comptes.slice(-5).reverse(); // 5 derniers comptes
-        this.loading = false;
-      }
-    });
-  }
-
-  /**
-   * Formater le montant
-   */
-  formatMontant(montant: number): string {
-    return montant.toLocaleString('fr-FR') + ' FCFA';
-  }
-}
-```
-
-Modifier `src/app/components/dashboard/dashboard.component.html` :
-
-```html
-<div class="container mt-4">
-  <!-- En-tête -->
-  <div class="mb-4">
-    <h1 class="display-4">
-      <i class="bi bi-speedometer2 me-3"></i>
-      Tableau de Bord
-    </h1>
-    <p class="lead text-muted">Vue d'ensemble de votre banque</p>
-  </div>
-
-  <!-- Statistiques -->
-  <div class="row mb-4">
-    <!-- Total Clients -->
-    <div class="col-md-4 mb-3">
-      <div class="card border-primary shadow-sm h-100">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <p class="text-muted mb-1">Total Clients</p>
-              <h2 class="mb-0">{{ totalClients }}</h2>
-            </div>
-            <div class="bg-primary bg-opacity-10 p-3 rounded">
-              <i class="bi bi-people-fill text-primary fs-1"></i>
-            </div>
-          </div>
-        </div>
-        <div class="card-footer bg-transparent">
-          <a routerLink="/clients" class="text-decoration-none">
-            Voir tous les clients <i class="bi bi-arrow-right"></i>
-          </a>
-        </div>
-      </div>
-    </div>
-
-    <!-- Total Comptes -->
-    <div class="col-md-4 mb-3">
-      <div class="card border-success shadow-sm h-100">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <p class="text-muted mb-1">Total Comptes</p>
-              <h2 class="mb-0">{{ totalComptes }}</h2>
-            </div>
-            <div class="bg-success bg-opacity-10 p-3 rounded">
-              <i class="bi bi-wallet2 text-success fs-1"></i>
-            </div>
-          </div>
-        </div>
-        <div class="card-footer bg-transparent">
-          <a routerLink="/comptes" class="text-decoration-none">
-            Voir tous les comptes <i class="bi bi-arrow-right"></i>
-          </a>
-        </div>
-      </div>
-    </div>
-
-    <!-- Solde Total -->
-    <div class="col-md-4 mb-3">
-      <div class="card border-warning shadow-sm h-100">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <p class="text-muted mb-1">Solde Total</p>
-              <h2 class="mb-0">{{ formatMontant(soldeTotal) }}</h2>
-            </div>
-            <div class="bg-warning bg-opacity-10 p-3 rounded">
-              <i class="bi bi-cash-stack text-warning fs-1"></i>
-            </div>
-          </div>
-        </div>
-        <div class="card-footer bg-transparent">
-          <span class="text-muted">Tous les comptes</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Actions rapides -->
-  <div class="row mb-4">
-    <div class="col-12">
-      <div class="card shadow-sm">
-        <div class="card-header bg-light">
-          <h5 class="mb-0">
-            <i class="bi bi-lightning-fill me-2"></i>
-            Actions Rapides
-          </h5>
-        </div>
-        <div class="card-body">
-          <div class="row g-3">
-            <div class="col-md-3">
-              <a routerLink="/clients/create" class="btn btn-outline-primary w-100">
-                <i class="bi bi-person-plus fs-3 d-block mb-2"></i>
-                Nouveau Client
-              </a>
-            </div>
-            <div class="col-md-3">
-              <a routerLink="/comptes/create" class="btn btn-outline-success w-100">
-                <i class="bi bi-wallet-fill fs-3 d-block mb-2"></i>
-                Nouveau Compte
-              </a>
-            </div>
-            <div class="col-md-3">
-              <a routerLink="/clients" class="btn btn-outline-info w-100">
-                <i class="bi bi-search fs-3 d-block mb-2"></i>
-                Rechercher Client
-              </a>
-            </div>
-            <div class="col-md-3">
-              <a routerLink="/comptes" class="btn btn-outline-warning w-100">
-                <i class="bi bi-list-ul fs-3 d-block mb-2"></i>
-                Liste Comptes
-              </a>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Derniers clients -->
-  <div class="row">
-    <div class="col-md-6 mb-4">
-      <div class="card shadow-sm">
-        <div class="card-header bg-primary text-white">
-          <h5 class="mb-0">
-            <i class="bi bi-clock-history me-2"></i>
-            Derniers Clients
-          </h5>
-        </div>
-        <div class="card-body p-0">
-          <div *ngIf="recentClients.length === 0" class="p-3 text-center text-muted">
-            Aucun client récent
-          </div>
-          <div class="list-group list-group-flush">
-            <div *ngFor="let client of recentClients" class="list-group-item">
-              <div class="d-flex justify-content-between align-items-center">
-                <div>
-                  <strong>{{ client.prenom }} {{ client.nom }}</strong>
-                  <br>
-                  <small class="text-muted">{{ client.email }}</small>
-                </div>
-                <a [routerLink]="['/clients/edit', client.id]" class="btn btn-sm btn-outline-primary">
-                  <i class="bi bi-pencil"></i>
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Derniers comptes -->
-    <div class="col-md-6 mb-4">
-      <div class="card shadow-sm">
-        <div class="card-header bg-success text-white">
-          <h5 class="mb-0">
-            <i class="bi bi-clock-history me-2"></i>
-            Derniers Comptes
-          </h5>
-        </div>
-        <div class="card-body p-0">
-          <div *ngIf="recentComptes.length === 0" class="p-3 text-center text-muted">
-            Aucun compte récent
-          </div>
-          <div class="list-group list-group-flush">
-            <div *ngFor="let compte of recentComptes" class="list-group-item">
-              <div class="d-flex justify-content-between align-items-center">
-                <div>
-                  <strong>{{ compte.numeroCompte }}</strong>
-                  <span class="badge ms-2"
-                        [class.bg-primary]="compte.typeCompte === 'COURANT'"
-                        [class.bg-success]="compte.typeCompte === 'EPARGNE'">
-                    {{ compte.typeCompte }}
-                  </span>
-                  <br>
-                  <small class="text-muted">Client #{{ compte.clientId }}</small>
-                </div>
-                <div class="text-end">
-                  <strong [class.text-success]="compte.solde >= 0"
-                          [class.text-danger]="compte.solde < 0">
-                    {{ formatMontant(compte.solde) }}
-                  </strong>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-```
-
-## 6.3 Configurer les routes
+## 6.2 Configurer les routes
 
 Modifier `src/app/app.routes.ts` :
 
 ```typescript
 import { Routes } from '@angular/router';
-import { DashboardComponent } from './components/dashboard/dashboard.component';
 import { ClientListComponent } from './components/clients/client-list/client-list.component';
 import { ClientFormComponent } from './components/clients/client-form/client-form.component';
 import { CompteListComponent } from './components/comptes/compte-list/compte-list.component';
 import { CompteFormComponent } from './components/comptes/compte-form/compte-form.component';
 
 export const routes: Routes = [
-  { path: '', component: DashboardComponent },
+  { path: '', component: ClientListComponent },
   { path: 'clients', component: ClientListComponent },
   { path: 'clients/create', component: ClientFormComponent },
   { path: 'clients/edit/:id', component: ClientFormComponent },
@@ -2084,10 +1783,6 @@ export const appConfig: ApplicationConfig = {
 
 ---
 
-# 9. Bonus : Dashboard et statistiques
-
-*(Déjà implémenté dans la Partie 4.2)*
-
 ---
 
 # 10. Tests et démarrage
@@ -2131,14 +1826,14 @@ ng serve
 ## 10.3 Vérifications
 
 1. **Eureka** : http://localhost:8761
-   - ✅ 3 services enregistrés
+   - 3 services enregistrés
 
 2. **Gateway** : http://localhost:8080
    - ✅ Routes fonctionnelles
 
 3. **Angular** : http://localhost:4200
    - ✅ Interface chargée
-   - ✅ Dashboard visible
+   - ✅ Liste des clients visible
 
 ## 10.4 Scénario de test complet
 
@@ -2263,6 +1958,6 @@ sudo cp -r dist/banque-frontend/* /var/www/html/
 
 ---
 
-**Fin du TP - Félicitations ! 🎉**
+**Fin du TP - Félicitations !**
 
 Vous avez maintenant une application Angular complète connectée à vos microservices !
